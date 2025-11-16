@@ -1,0 +1,58 @@
+{
+  "name": "@takojs/tako",
+  "version": "1.0.0",
+  "description": "Tako - a CLI framework that works on any JavaScript runtime",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node scripts/main.js",
+    "build": "tsc && node scripts/build.js",
+    "test": "node scripts/test.js"
+  },
+  "keywords": [
+    "tako",
+    "cli",
+    "framework",
+    "command-line",
+    "parser",
+    "typescript",
+    "nodejs",
+    "deno",
+    "bun",
+    "cross-runtime",
+    "middleware",
+    "type-safe",
+    "lightweight",
+    "zero-dependency"
+  ],
+  "author": "Takuro Kitahara",
+  "license": "MIT",
+  "type": "module",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "homepage": "https://takojs.github.io",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/takojs/tako.git"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "esbuild": "^0.27.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0",
+    "npm": "^10.9.3 || ^11.0.0"
+  },
+  "packageManager": "npm@11.6.1",
+  "publishConfig": {
+    "access": "public"
+  }
+}
