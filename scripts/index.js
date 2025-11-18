@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: MIT
  * SPDX-FileCopyrightText: 2025 Takuro Kitahara
- * SPDX-FileComment: Version 1.0.0
+ * SPDX-FileComment: Version 1.1.0
  */
 var __defProp = Object.defineProperty;
 var __typeError = (msg) => {
@@ -14,11 +14,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
 var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot " + msg);
 var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
 var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
-
-// src/tako.ts
-import * as path from "node:path";
-import * as process from "node:process";
-import * as util from "node:util";
 
 // src/defaults.ts
 var defaultConfig = {
@@ -57,6 +52,9 @@ var defaultMetadata = {
 };
 
 // src/tako.ts
+import * as path from "node:path";
+import * as process from "node:process";
+import * as util from "node:util";
 var _commands, _rootHandlers;
 var Tako = class {
   constructor() {
@@ -122,7 +120,7 @@ var Tako = class {
     const requiredOptions = optionDefinitions.filter((opt) => opt.required);
     const requiredArgs = requiredOptions.map((opt) => {
       let usagePart = `-${opt.short}`;
-      const placeholder = opt.placeholder ? `<${opt.placeholder}>` : opt.type === "string" && typeof opt.default === "string" ? `<${opt.default}>` : "<arg>";
+      const placeholder = opt.placeholder ? `<${opt.placeholder}>` : opt.type === "string" && typeof opt.default === "string" ? `<${opt.default}>` : "<ARG>";
       if (opt.type === "string") {
         usagePart += ` ${placeholder}`;
       }
@@ -174,7 +172,7 @@ var Tako = class {
           longPart = `--[no-]${def.name}`;
         }
       } else if (def.type === "string") {
-        const placeholder = def.placeholder ? def.placeholder : typeof def.default === "string" ? `<${def.default}>` : "<arg>";
+        const placeholder = def.placeholder ? def.placeholder : typeof def.default === "string" ? `<${def.default}>` : "<ARG>";
         longPart += ` ${placeholder}`;
       }
       const optionDefinition = short + longPart;
@@ -189,11 +187,11 @@ var Tako = class {
     const lines = fullOptions.map((opt) => {
       const requiredPadding = targetWidthForOptions - opt.length;
       const padding = " ".repeat(requiredPadding);
-      let description = opt.help || "";
+      let explanation = opt.help || "";
       if (opt.required) {
-        description += " (Required)";
+        explanation += " (Required)";
       }
-      return `  ${opt.optionDefinition}${padding}${description}`;
+      return `  ${opt.optionDefinition}${padding}${explanation}`;
     });
     if (lines.length > 0) {
       helpOutput += "\n\nOptions:\n" + lines.join("\n");
@@ -328,7 +326,7 @@ var Tako = class {
     if (!commandConfig) {
       if (globalPositionals.length > 0) {
         this.print({
-          message: `Error: Unknown command "${globalPositionals.join(" ")}"
+          message: `Command Error: Unknown command "${globalPositionals.join(" ")}"
 `,
           style: "red",
           level: "error"
@@ -383,5 +381,7 @@ var Tako = class {
 _commands = new WeakMap();
 _rootHandlers = new WeakMap();
 export {
-  Tako
+  Tako,
+  defaultConfig,
+  defaultMetadata
 };

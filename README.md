@@ -1,5 +1,10 @@
 # Tako
 
+[![GitHub License](https://img.shields.io/github/license/takojs/tako)](https://github.com/takojs/tako/blob/main/LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/takojs/tako)](https://github.com/takojs/tako/releases)
+[![npm](https://img.shields.io/npm/v/@takojs/tako)](https://www.npmjs.com/package/@takojs/tako)
+[![JSR](https://jsr.io/badges/@takojs/tako)](https://jsr.io/@takojs/tako)
+
 Tako - **means octopus 🐙 in Japanese** - is a lightweight and easy-to-use CLI framework.
 
 A CLI framework that works on any JavaScript runtime: Node.js, Deno, and Bun.
@@ -19,11 +24,33 @@ Learn about the motivation behind this project in [motivation.md](motivation.md)
 
 ## Installation
 
+Tako is available on npm and JSR, and can be installed using your preferred package manager or runtime.
+
 ```bash
 npm install @takojs/tako
 ```
 
+```bash
+yarn add @takojs/tako
+```
+
+```bash
+pnpm add @takojs/tako
+```
+
+```bash
+deno add jsr:@takojs/tako
+```
+
+```bash
+bun add @takojs/tako
+```
+
 ## Usage
+
+Get started quickly by checking out the examples below or opening a development environment instantly.
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/takojs/tako)
 
 You can find complete, runnable examples in the [`examples`](examples) directory.
 
@@ -82,7 +109,7 @@ $ node examples/untitled-3.ts -h
 ```
 
 ```
-Usage: node untitled-3.ts [command]
+Usage: node untitled-3.ts [COMMAND]
 
   Untitled
 

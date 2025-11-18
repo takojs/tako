@@ -1,19 +1,23 @@
 #!/usr/bin/env node
 import { Tako } from "../src/index.ts";
-import type { TakoArgs } from "../src/types.ts";
+import type { TakoArgs, TakoHandler } from "../src/index.ts";
 
-function authMiddleware(c: Tako, next: () => void): void {
+const authMiddleware: TakoHandler = (c, next) => {
   const { token } = c.scriptArgs.values;
   const { value } = c.metadata.options?.token as { value: string };
   if (!value || token !== value) {
-    c.print({ message: "Authentication failed!", style: "red", level: "error" });
+    c.print({
+      message: "Authentication failed!",
+      style: "red",
+      level: "error",
+    });
     return;
   }
   c.print({ message: `Authenticated!`, style: "bgGreen" });
   next();
-}
+};
 
-const secret: TakoArgs = {
+const secretArgs: TakoArgs = {
   config: {
     options: {
       token: {
@@ -33,7 +37,7 @@ const secret: TakoArgs = {
   },
 };
 
-const config: TakoArgs = {
+const rootArgs: TakoArgs = {
   metadata: {
     version: "0.1.0",
     help: "Untitled",
@@ -42,8 +46,8 @@ const config: TakoArgs = {
 
 const tako = new Tako();
 
-tako.command("secret", secret, authMiddleware, (c) => {
+tako.command("secret", secretArgs, authMiddleware, (c) => {
   c.print({ message: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" });
 });
 
-tako.cli(config);
+tako.cli(rootArgs);

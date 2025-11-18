@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Tako } from "./index.js";
+import pkg from "../package.json" with { type: "json" };
 
 const hello = {
   config: {
@@ -23,8 +24,8 @@ const hello = {
 
 const config = {
   metadata: {
-    version: "1.0.0",
-    help: "Tako - a CLI framework that works on any JavaScript runtime.",
+    version: pkg.version,
+    help: pkg.description,
   },
 };
 

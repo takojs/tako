@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { Tako } from "../src/index.ts";
-import type { TakoArgs } from "../src/types.ts";
+import type { TakoArgs } from "../src/index.ts";
 
-const hello: TakoArgs = {
+const helloArgs: TakoArgs = {
   config: {
     options: {
       name: {
@@ -22,7 +22,7 @@ const hello: TakoArgs = {
   },
 };
 
-const config: TakoArgs = {
+const rootArgs: TakoArgs = {
   metadata: {
     version: "0.1.0",
     help: "Untitled",
@@ -31,9 +31,9 @@ const config: TakoArgs = {
 
 const tako = new Tako();
 
-tako.command("hello", hello, (c) => {
+tako.command("hello", helloArgs, (c) => {
   const { values } = c.scriptArgs;
   c.print({ message: `Hello, ${values.name}!` });
 });
 
-tako.cli(config);
+tako.cli(rootArgs);

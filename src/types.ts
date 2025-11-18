@@ -49,10 +49,10 @@ export interface ArgsMetadata {
   options?: Record<string, OptionsMetadata>;
 }
 
-export type CommandHandler = (c: Tako, next: () => void) => void;
+export type TakoHandler = (c: Tako, next: () => Promise<void> | void) => Promise<void> | void;
 
-export interface CommandConfig {
-  handlers: CommandHandler[];
+export interface CommandDefinition {
+  handlers: TakoHandler[];
   config?: ParseArgsConfig;
   metadata?: ArgsMetadata;
 }

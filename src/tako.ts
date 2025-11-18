@@ -4,21 +4,21 @@ import * as util from "node:util";
 import { defaultConfig, defaultMetadata } from "./defaults.ts";
 import type {
   ArgsMetadata,
-  CommandConfig,
-  CommandHandler,
+  CommandDefinition,
   Options,
   ParseArgsConfig,
   ParsedResults,
   PrintArgs,
   TakoArgs,
+  TakoHandler,
 } from "./types.ts";
 
 class Tako {
   scriptArgs!: ParsedResults;
   config: ParseArgsConfig = {};
   metadata: ArgsMetadata = {};
-  #commands: Map<string, CommandConfig> = new Map();
-  #rootHandlers: CommandHandler[] = [];
+  #commands: Map<string, CommandDefinition> = new Map();
+  #rootHandlers: TakoHandler[] = [];
 
   print({ message, style, level, value }: PrintArgs): void {
     const effectiveLevel = level ?? "log";
@@ -86,7 +86,7 @@ class Tako {
           ? `<${opt.placeholder}>`
           : opt.type === "string" && typeof opt.default === "string"
           ? `<${opt.default}>`
-          : "<arg>";
+          : "<ARG>";
         if (opt.type === "string") {
           usagePart += ` ${placeholder}`;
         }
@@ -114,7 +114,7 @@ class Tako {
     }
     let helpOutput = `Usage: ${usageLine}`;
 
-    // Description Section
+    // Explanation Section
     if (!commandName && this.metadata?.help) {
       helpOutput += `\n\n  ${this.metadata.help}`;
     }
@@ -143,7 +143,7 @@ class Tako {
           ? def.placeholder
           : typeof def.default === "string"
           ? `<${def.default}>`
-          : "<arg>";
+          : "<ARG>";
         longPart += ` ${placeholder}`;
       }
       const optionDefinition = short + longPart;
@@ -158,11 +158,11 @@ class Tako {
     const lines = fullOptions.map((opt) => {
       const requiredPadding = targetWidthForOptions - opt.length;
       const padding = " ".repeat(requiredPadding);
-      let description = opt.help || "";
+      let explanation = opt.help || "";
       if (opt.required) {
-        description += " (Required)";
+        explanation += " (Required)";
       }
-      return `  ${opt.optionDefinition}${padding}${description}`;
+      return `  ${opt.optionDefinition}${padding}${explanation}`;
     });
     if (lines.length > 0) {
       helpOutput += "\n\nOptions:\n" + lines.join("\n");
@@ -206,14 +206,14 @@ class Tako {
     return docs.join("\n\n");
   }
 
-  command(name: string, { config, metadata }: TakoArgs, ...handlers: CommandHandler[]): this {
+  command(name: string, { config, metadata }: TakoArgs, ...handlers: TakoHandler[]): this {
     const normalizedName = name.trim().split(" ").filter(Boolean).join(" ");
     if (!normalizedName) {
       this.#rootHandlers.push(...handlers);
       return this;
     }
     const existingConfig = this.#commands.get(normalizedName);
-    const commandConfig: CommandConfig = {
+    const commandConfig: CommandDefinition = {
       handlers: [...(existingConfig?.handlers || []), ...handlers],
       config: { ...(existingConfig?.config || {}), ...(config || {}) },
       metadata: { ...(existingConfig?.metadata || {}), ...(metadata || {}) },
@@ -222,7 +222,7 @@ class Tako {
     return this;
   }
 
-  cli({ config, metadata }: TakoArgs, ...rootHandlers: CommandHandler[]): void {
+  cli({ config, metadata }: TakoArgs, ...rootHandlers: TakoHandler[]): void {
     this.config = { ...defaultConfig, ...(config || {}) };
     this.metadata = { ...defaultMetadata, ...(metadata || {}) };
     this.#rootHandlers.push(...rootHandlers);
@@ -266,7 +266,7 @@ class Tako {
     }
 
     // Command Resolution
-    let bestCommandConfig: CommandConfig | undefined;
+    let bestCommandConfig: CommandDefinition | undefined;
     let bestCommandName: string | undefined;
     let bestPositionalsConsumed = 0;
     if (globalPositionals.length > 0) {
@@ -314,7 +314,7 @@ class Tako {
     if (!commandConfig) {
       if (globalPositionals.length > 0) {
         this.print({
-          message: `Error: Unknown command "${globalPositionals.join(" ")}"\n`,
+          message: `Command Error: Unknown command "${globalPositionals.join(" ")}"\n`,
           style: "red",
           level: "error",
         });

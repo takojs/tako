@@ -1,3 +1,3 @@
-import { Tako } from "./tako.ts";
-
-export { Tako };
+export * from "./defaults.ts";
+export * from "./tako.ts";
+export * from "./types.ts";
