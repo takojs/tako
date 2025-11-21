@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: MIT
  * SPDX-FileCopyrightText: 2025 Takuro Kitahara
- * SPDX-FileComment: Version 1.1.0
+ * SPDX-FileComment: Version 1.2.0
  */
 var __defProp = Object.defineProperty;
 var __typeError = (msg) => {
@@ -14,6 +14,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
 var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot " + msg);
 var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
 var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
+var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
 
 // src/defaults.ts
 var defaultConfig = {
@@ -55,14 +56,23 @@ var defaultMetadata = {
 import * as path from "node:path";
 import * as process from "node:process";
 import * as util from "node:util";
-var _commands, _rootHandlers;
+var _scriptArgs, _config, _commands, _rootHandlers;
 var Tako = class {
   constructor() {
-    __publicField(this, "scriptArgs");
-    __publicField(this, "config", {});
-    __publicField(this, "metadata", {});
+    __publicField(this, "argv", process.argv);
+    __publicField(this, "argv0", process.argv0);
+    __privateAdd(this, _scriptArgs, { values: {}, positionals: [] });
+    __publicField(this, "args", { values: {}, positionals: [] });
+    __privateAdd(this, _config, { options: {} });
+    __publicField(this, "metadata", { options: {} });
     __privateAdd(this, _commands, /* @__PURE__ */ new Map());
     __privateAdd(this, _rootHandlers, []);
+  }
+  get scriptArgs() {
+    return __privateGet(this, _scriptArgs);
+  }
+  get config() {
+    return __privateGet(this, _config);
   }
   print({ message, style, level, value }) {
     const effectiveLevel = level ?? "log";
@@ -99,24 +109,22 @@ var Tako = class {
     return this.metadata?.version ?? "";
   }
   getHelp(commandName) {
-    const currentOptions = this.config.options || {};
+    const currentOptions = __privateGet(this, _config).options;
     const currentMetadataOptions = this.metadata.options;
     let currentCommandMetadata;
     let commandUsagePart = "";
     if (commandName) {
-      const commandConfig = __privateGet(this, _commands).get(commandName);
-      if (commandConfig) {
-        currentCommandMetadata = commandConfig.metadata;
+      const commandDefinition = __privateGet(this, _commands).get(commandName);
+      if (commandDefinition) {
+        currentCommandMetadata = commandDefinition.metadata;
         commandUsagePart = ` ${commandName}`;
       }
     }
-    const optionDefinitions = Object.entries(currentOptions).map(
-      ([name, opt]) => Object.assign(
-        { name },
-        opt,
-        currentMetadataOptions?.[name] || {}
-      )
-    );
+    const optionDefinitions = Object.entries(currentOptions || {}).map(([name, opt]) => ({
+      name,
+      ...opt,
+      ...currentMetadataOptions?.[name] || {}
+    }));
     const requiredOptions = optionDefinitions.filter((opt) => opt.required);
     const requiredArgs = requiredOptions.map((opt) => {
       let usagePart = `-${opt.short}`;
@@ -126,11 +134,11 @@ var Tako = class {
       }
       return usagePart;
     }).join(" ");
-    const scriptName = path.basename(process.argv[1] || "");
+    const runtimeName = path.basename(this.argv[0] || "");
+    const scriptName = path.basename(this.argv[1] || "");
     const commandNames = Array.from(__privateGet(this, _commands).keys());
     const hasCommands = commandNames.length > 0;
-    const runtime = this.getRuntimeKey();
-    let usageLine = `${runtime} ${scriptName}`;
+    let usageLine = `${runtimeName} ${scriptName}`;
     if (commandName) {
       usageLine += commandUsagePart;
       const hasSubCommandsForCommandName = Array.from(__privateGet(this, _commands).keys()).some(
@@ -156,19 +164,17 @@ var Tako = class {
 
   ${currentCommandMetadata.help}`;
     }
-    const optionDefinitionsForOptions = Object.entries(currentOptions).map(
-      ([name, opt]) => Object.assign(
-        { name },
-        opt,
-        currentMetadataOptions?.[name] || {}
-      )
-    );
+    const optionDefinitionsForOptions = Object.entries(currentOptions || {}).map(([name, opt]) => ({
+      name,
+      ...opt,
+      ...currentMetadataOptions?.[name] || {}
+    }));
     const paddingOffsetForOptions = 2;
     const fullOptions = optionDefinitionsForOptions.map((def) => {
       const short = def.short ? `-${def.short}, ` : "    ";
       let longPart = `--${def.name}`;
       if (def.type === "boolean") {
-        if (this.config.allowNegative) {
+        if (__privateGet(this, _config).allowNegative) {
           longPart = `--[no-]${def.name}`;
         }
       } else if (def.type === "string") {
@@ -232,32 +238,48 @@ var Tako = class {
       __privateGet(this, _rootHandlers).push(...handlers);
       return this;
     }
-    const existingConfig = __privateGet(this, _commands).get(normalizedName);
-    const commandConfig = {
-      handlers: [...existingConfig?.handlers || [], ...handlers],
-      config: { ...existingConfig?.config || {}, ...config || {} },
-      metadata: { ...existingConfig?.metadata || {}, ...metadata || {} }
+    const existingDefinition = __privateGet(this, _commands).get(normalizedName);
+    const commandDefinition = {
+      handlers: [...existingDefinition?.handlers || [], ...handlers],
+      config: { ...existingDefinition?.config || {}, ...config || {} },
+      metadata: { ...existingDefinition?.metadata || {}, ...metadata || {} }
     };
-    __privateGet(this, _commands).set(normalizedName, commandConfig);
+    __privateGet(this, _commands).set(normalizedName, commandDefinition);
     return this;
   }
   cli({ config, metadata }, ...rootHandlers) {
-    this.config = { ...defaultConfig, ...config || {} };
-    this.metadata = { ...defaultMetadata, ...metadata || {} };
+    const { options: configOptions, ...argsConfig } = config || {};
+    __privateSet(this, _config, {
+      ...defaultConfig,
+      ...argsConfig,
+      options: {
+        ...defaultConfig.options || {},
+        ...configOptions || {}
+      }
+    });
+    const { options: metadataOptions, ...argsMetadata } = metadata || {};
+    this.metadata = {
+      ...defaultMetadata,
+      ...argsMetadata,
+      options: {
+        ...defaultMetadata.options || {},
+        ...metadataOptions || {}
+      }
+    };
     __privateGet(this, _rootHandlers).push(...rootHandlers);
-    let globalParseOptions = this.config.options || {};
-    for (const commandConfig2 of __privateGet(this, _commands).values()) {
-      globalParseOptions = { ...globalParseOptions, ...commandConfig2.config?.options || {} };
+    let globalParseOptions = __privateGet(this, _config).options;
+    for (const commandDefinition2 of __privateGet(this, _commands).values()) {
+      globalParseOptions = { ...globalParseOptions, ...commandDefinition2.config?.options || {} };
     }
     try {
-      this.scriptArgs = util.parseArgs({
-        args: this.config.args,
+      __privateSet(this, _scriptArgs, util.parseArgs({
+        args: __privateGet(this, _config).args,
         options: globalParseOptions,
-        strict: this.config.strict,
-        allowPositionals: this.config.allowPositionals,
-        allowNegative: this.config.allowNegative,
-        tokens: this.config.tokens
-      });
+        strict: __privateGet(this, _config).strict,
+        allowPositionals: __privateGet(this, _config).allowPositionals,
+        allowNegative: __privateGet(this, _config).allowNegative,
+        tokens: __privateGet(this, _config).tokens
+      }));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.print({ message: `Parse Error: ${message}
@@ -265,7 +287,7 @@ var Tako = class {
       this.print({ message: this.getHelp() });
       process.exit(1);
     }
-    const { positionals: globalPositionals, values: globalValues } = this.scriptArgs;
+    const { positionals: globalPositionals, values: globalValues } = __privateGet(this, _scriptArgs);
     if (globalValues.version) {
       const version = this.getVersion();
       if (version) {
@@ -280,38 +302,38 @@ var Tako = class {
       }
       return;
     }
-    let bestCommandConfig;
+    let bestCommandDefinition;
     let bestCommandName;
     let bestPositionalsConsumed = 0;
     if (globalPositionals.length > 0) {
       for (let i = globalPositionals.length; i > 0; i--) {
         const potentialCommandWithSpaces = globalPositionals.slice(0, i).join(" ");
         if (__privateGet(this, _commands).has(potentialCommandWithSpaces)) {
-          bestCommandConfig = __privateGet(this, _commands).get(potentialCommandWithSpaces);
+          bestCommandDefinition = __privateGet(this, _commands).get(potentialCommandWithSpaces);
           bestCommandName = potentialCommandWithSpaces;
           bestPositionalsConsumed = i;
           break;
         }
       }
     }
-    let commandConfig = bestCommandConfig;
+    let commandDefinition = bestCommandDefinition;
     const commandName = bestCommandName;
     const positionalsConsumed = bestPositionalsConsumed;
-    if (commandConfig) {
-      this.config = {
-        ...this.config,
-        ...commandConfig.config || {},
+    if (commandDefinition) {
+      __privateSet(this, _config, {
+        ...__privateGet(this, _config),
+        ...commandDefinition.config || {},
         options: {
-          ...this.config.options || {},
-          ...commandConfig.config?.options || {}
+          ...__privateGet(this, _config).options,
+          ...commandDefinition.config?.options || {}
         }
-      };
-      const commandMetadata = commandConfig.metadata || {};
+      });
+      const commandMetadata = commandDefinition.metadata || {};
       this.metadata = {
         ...this.metadata,
         ...commandMetadata,
         options: {
-          ...this.metadata.options || {},
+          ...this.metadata.options,
           ...commandMetadata.options || {}
         }
       };
@@ -320,10 +342,10 @@ var Tako = class {
       this.print({ message: this.getHelp(commandName) });
       return;
     }
-    if (!commandConfig && globalPositionals.length === 0 && __privateGet(this, _rootHandlers).length > 0) {
-      commandConfig = { handlers: __privateGet(this, _rootHandlers) };
+    if (!commandDefinition && globalPositionals.length === 0 && __privateGet(this, _rootHandlers).length > 0) {
+      commandDefinition = { handlers: __privateGet(this, _rootHandlers) };
     }
-    if (!commandConfig) {
+    if (!commandDefinition) {
       if (globalPositionals.length > 0) {
         this.print({
           message: `Command Error: Unknown command "${globalPositionals.join(" ")}"
@@ -338,15 +360,15 @@ var Tako = class {
       return;
     }
     try {
-      this.scriptArgs = util.parseArgs({
-        args: this.config.args,
-        options: this.config.options || {},
-        strict: this.config.strict,
-        allowPositionals: this.config.allowPositionals,
-        allowNegative: this.config.allowNegative,
-        tokens: this.config.tokens
-      });
-      this.scriptArgs.positionals = this.scriptArgs.positionals.slice(positionalsConsumed);
+      __privateSet(this, _scriptArgs, util.parseArgs({
+        args: __privateGet(this, _config).args,
+        options: __privateGet(this, _config).options,
+        strict: __privateGet(this, _config).strict,
+        allowPositionals: __privateGet(this, _config).allowPositionals,
+        allowNegative: __privateGet(this, _config).allowNegative,
+        tokens: __privateGet(this, _config).tokens
+      }));
+      __privateGet(this, _scriptArgs).positionals = __privateGet(this, _scriptArgs).positionals.slice(positionalsConsumed);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.print({ message: `Parse Error: ${message}
@@ -354,14 +376,14 @@ var Tako = class {
       this.print({ message: this.getHelp(commandName) });
       process.exit(1);
     }
-    if (commandConfig?.handlers && commandConfig.handlers.length > 0) {
+    if (commandDefinition.handlers.length > 0) {
       let handlerIndex = 0;
-      const executeNext = () => {
-        if (handlerIndex < commandConfig.handlers.length) {
-          const handler = commandConfig.handlers[handlerIndex];
+      const next = () => {
+        if (handlerIndex < commandDefinition.handlers.length) {
+          const handler = commandDefinition.handlers[handlerIndex];
           handlerIndex++;
           try {
-            handler(this, executeNext);
+            handler(this, next);
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             this.print({ message: `Execution Error: ${message}
@@ -371,13 +393,15 @@ var Tako = class {
           }
         }
       };
-      executeNext();
+      next();
     } else {
       this.print({ message: this.getHelp() });
       return;
     }
   }
 };
+_scriptArgs = new WeakMap();
+_config = new WeakMap();
 _commands = new WeakMap();
 _rootHandlers = new WeakMap();
 export {

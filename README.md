@@ -56,7 +56,7 @@ You can find complete, runnable examples in the [`examples`](examples) directory
 
 ### Root Handler
 
-You can also define a handler that runs when no command is specified.
+You can define a handler that runs when no command is specified.
 
 **Source:** [`examples/untitled-1.ts`](examples/untitled-1.ts)
 
@@ -122,6 +122,19 @@ Commands:
   secret    A command that requires authentication.
 ```
 
+### Deno and JSR Usage
+
+This example demonstrates a root handler running in Deno with Tako imported from JSR.
+
+**Source:** [`examples/jsr-untitled-1.ts`](examples/jsr-untitled-1.ts)
+
+**Run it:**
+
+```bash
+$ deno --no-npm examples/jsr-untitled-1.ts
+919108f7-52d1-4320-9bac-f847db4148a8
+```
+
 ## API
 
 ### `new Tako()`
@@ -134,8 +147,8 @@ Defines a command with one or more handlers (middleware).
 
 - `name`: The name of the command.
 - `args`: An object containing `config` and `metadata` for the command.
-  - `args.config`: An object defining the CLI config for this command.
-  - `args.metadata`: An object providing descriptions for the command and its config.
+  - `args.config`: A `ParseArgsConfig` object defining the CLI configuration for this command.
+  - `args.metadata`: An `ArgsMetadata` object providing help text and other metadata for the command and its options.
 - `...handlers`: A sequence of handler functions. Each handler receives the `Tako` instance and a `next` function to call the next handler in the chain.
   - `handler(c, next)`
 
@@ -157,19 +170,23 @@ Prints a message to the console.
 
 ### `.scriptArgs`
 
-A property that holds the parsed command-line arguments. It has three properties:
+A **readonly** property that provides access to the full parsed command-line arguments, including raw tokens if enabled. Internally managed as a private property, it exposes a `ParsedResults` object with three properties:
 
 - `values`: An object containing the parsed option values (e.g., `{ name: "Tako" }`).
 - `positionals`: An array of positional arguments (e.g., `["hello"]`).
-- `tokens`: An array of tokens representing the parsed command-line arguments.
+- `tokens`: An array of tokens representing the parsed command-line arguments. This property is available only if the `tokens` option in `ParseArgsConfig` is set to `true`.
+
+### `.args`
+
+A mutable property for passing data between middleware handlers. Unlike the readonly `.scriptArgs`, `.args` can be modified by handlers to share contextual information throughout a command's execution.
 
 ### `.config`
 
-A property that holds the currently active command's configuration. This object contains the `options` definitions and other parsing settings like `allowNegative` and `tokens`. It can be useful for handlers that need to dynamically inspect the command's configuration.
+A **readonly** property that provides access to the currently active command's configuration. Internally managed as a private property, this `ParseArgsConfig` object contains the `options` definitions and other parsing settings like `allowNegative` and `tokens`. It can be useful for handlers that need to dynamically inspect the command's configuration.
 
 ### `.metadata`
 
-A property that holds the currently active command's metadata. This includes help text and any custom data attached to option definitions. This is useful for accessing custom values or descriptions within a handler.
+A property that holds the currently active command's `ArgsMetadata` object. This metadata is used for generating help text and defining command-level information.
 
 ### `.genDocs()`
 

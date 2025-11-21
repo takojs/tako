@@ -5,20 +5,33 @@ import { defaultConfig, defaultMetadata } from "./defaults.ts";
 import type {
   ArgsMetadata,
   CommandDefinition,
-  Options,
+  DeepReadonly,
   ParseArgsConfig,
   ParsedResults,
   PrintArgs,
+  Runtime,
+  ScriptArgs,
   TakoArgs,
   TakoHandler,
 } from "./types.ts";
 
 class Tako {
-  scriptArgs!: ParsedResults;
-  config: ParseArgsConfig = {};
-  metadata: ArgsMetadata = {};
+  readonly argv: readonly string[] = process.argv;
+  readonly argv0: string = process.argv0;
+  #scriptArgs: ParsedResults = { values: {}, positionals: [] };
+  args: ScriptArgs = { values: {}, positionals: [] };
+  #config: ParseArgsConfig = { options: {} };
+  metadata: ArgsMetadata = { options: {} };
   #commands: Map<string, CommandDefinition> = new Map();
   #rootHandlers: TakoHandler[] = [];
+
+  get scriptArgs(): DeepReadonly<ParsedResults> {
+    return this.#scriptArgs;
+  }
+
+  get config(): DeepReadonly<ParseArgsConfig> {
+    return this.#config;
+  }
 
   print({ message, style, level, value }: PrintArgs): void {
     const effectiveLevel = level ?? "log";
@@ -43,10 +56,12 @@ class Tako {
     }
   }
 
-  getRuntimeKey(): string {
+  getRuntimeKey(): Runtime {
+    // deno-lint-ignore no-explicit-any
     if (typeof (globalThis as any).Bun !== "undefined") {
       return "bun";
     }
+    // deno-lint-ignore no-explicit-any
     if (typeof (globalThis as any).Deno !== "undefined") {
       return "deno";
     }
@@ -58,26 +73,24 @@ class Tako {
   }
 
   getHelp(commandName?: string): string {
-    const currentOptions = this.config.options || {};
+    const currentOptions = this.#config.options;
     const currentMetadataOptions = this.metadata.options;
     let currentCommandMetadata: ArgsMetadata | undefined;
     let commandUsagePart = "";
     if (commandName) {
-      const commandConfig = this.#commands.get(commandName);
-      if (commandConfig) {
-        currentCommandMetadata = commandConfig.metadata;
+      const commandDefinition = this.#commands.get(commandName);
+      if (commandDefinition) {
+        currentCommandMetadata = commandDefinition.metadata;
         commandUsagePart = ` ${commandName}`;
       }
     }
 
     // Usage Section
-    const optionDefinitions = Object.entries(currentOptions).map(([name, opt]) =>
-      Object.assign(
-        { name },
-        opt,
-        currentMetadataOptions?.[name] || {},
-      )
-    );
+    const optionDefinitions = Object.entries(currentOptions || {}).map(([name, opt]) => ({
+      name,
+      ...opt,
+      ...(currentMetadataOptions?.[name] || {}),
+    }));
     const requiredOptions = optionDefinitions.filter((opt) => opt.required);
     const requiredArgs = requiredOptions
       .map((opt) => {
@@ -93,11 +106,11 @@ class Tako {
         return usagePart;
       })
       .join(" ");
-    const scriptName = path.basename(process.argv[1] || "");
+    const runtimeName = path.basename(this.argv[0] || "");
+    const scriptName = path.basename(this.argv[1] || "");
     const commandNames = Array.from(this.#commands.keys());
     const hasCommands = commandNames.length > 0;
-    const runtime = this.getRuntimeKey();
-    let usageLine = `${runtime} ${scriptName}`;
+    let usageLine = `${runtimeName} ${scriptName}`;
     if (commandName) {
       usageLine += commandUsagePart;
       const hasSubCommandsForCommandName = Array.from(this.#commands.keys()).some(
@@ -123,19 +136,17 @@ class Tako {
     }
 
     // Options Section
-    const optionDefinitionsForOptions = Object.entries(currentOptions).map(([name, opt]) =>
-      Object.assign(
-        { name },
-        opt,
-        currentMetadataOptions?.[name] || {},
-      )
-    );
+    const optionDefinitionsForOptions = Object.entries(currentOptions || {}).map(([name, opt]) => ({
+      name,
+      ...opt,
+      ...(currentMetadataOptions?.[name] || {}),
+    }));
     const paddingOffsetForOptions = 2;
     const fullOptions = optionDefinitionsForOptions.map((def) => {
       const short = def.short ? `-${def.short}, ` : "    ";
       let longPart = `--${def.name}`;
       if (def.type === "boolean") {
-        if (this.config.allowNegative) {
+        if (this.#config.allowNegative) {
           longPart = `--[no-]${def.name}`;
         }
       } else if (def.type === "string") {
@@ -212,34 +223,50 @@ class Tako {
       this.#rootHandlers.push(...handlers);
       return this;
     }
-    const existingConfig = this.#commands.get(normalizedName);
-    const commandConfig: CommandDefinition = {
-      handlers: [...(existingConfig?.handlers || []), ...handlers],
-      config: { ...(existingConfig?.config || {}), ...(config || {}) },
-      metadata: { ...(existingConfig?.metadata || {}), ...(metadata || {}) },
+    const existingDefinition = this.#commands.get(normalizedName);
+    const commandDefinition = {
+      handlers: [...(existingDefinition?.handlers || []), ...handlers],
+      config: { ...(existingDefinition?.config || {}), ...(config || {}) },
+      metadata: { ...(existingDefinition?.metadata || {}), ...(metadata || {}) },
     };
-    this.#commands.set(normalizedName, commandConfig);
+    this.#commands.set(normalizedName, commandDefinition);
     return this;
   }
 
   cli({ config, metadata }: TakoArgs, ...rootHandlers: TakoHandler[]): void {
-    this.config = { ...defaultConfig, ...(config || {}) };
-    this.metadata = { ...defaultMetadata, ...(metadata || {}) };
+    const { options: configOptions, ...argsConfig } = config || {};
+    this.#config = {
+      ...defaultConfig,
+      ...argsConfig,
+      options: {
+        ...(defaultConfig.options || {}),
+        ...(configOptions || {}),
+      },
+    };
+    const { options: metadataOptions, ...argsMetadata } = metadata || {};
+    this.metadata = {
+      ...defaultMetadata,
+      ...argsMetadata,
+      options: {
+        ...(defaultMetadata.options || {}),
+        ...(metadataOptions || {}),
+      },
+    };
     this.#rootHandlers.push(...rootHandlers);
-    let globalParseOptions: Options = this.config.options || {};
-    for (const commandConfig of this.#commands.values()) {
-      globalParseOptions = { ...globalParseOptions, ...(commandConfig.config?.options || {}) };
+    let globalParseOptions = this.#config.options;
+    for (const commandDefinition of this.#commands.values()) {
+      globalParseOptions = { ...globalParseOptions, ...(commandDefinition.config?.options || {}) };
     }
 
     // Global Parse
     try {
-      this.scriptArgs = util.parseArgs({
-        args: this.config.args,
+      this.#scriptArgs = util.parseArgs({
+        args: this.#config.args,
         options: globalParseOptions,
-        strict: this.config.strict,
-        allowPositionals: this.config.allowPositionals,
-        allowNegative: this.config.allowNegative,
-        tokens: this.config.tokens,
+        strict: this.#config.strict,
+        allowPositionals: this.#config.allowPositionals,
+        allowNegative: this.#config.allowNegative,
+        tokens: this.#config.tokens,
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -249,7 +276,7 @@ class Tako {
     }
 
     // Global Flag Handling
-    const { positionals: globalPositionals, values: globalValues } = this.scriptArgs;
+    const { positionals: globalPositionals, values: globalValues } = this.#scriptArgs;
     if (globalValues.version) {
       const version = this.getVersion();
       if (version) {
@@ -266,38 +293,38 @@ class Tako {
     }
 
     // Command Resolution
-    let bestCommandConfig: CommandDefinition | undefined;
+    let bestCommandDefinition: CommandDefinition | undefined;
     let bestCommandName: string | undefined;
     let bestPositionalsConsumed = 0;
     if (globalPositionals.length > 0) {
       for (let i = globalPositionals.length; i > 0; i--) {
         const potentialCommandWithSpaces = globalPositionals.slice(0, i).join(" ");
         if (this.#commands.has(potentialCommandWithSpaces)) {
-          bestCommandConfig = this.#commands.get(potentialCommandWithSpaces);
+          bestCommandDefinition = this.#commands.get(potentialCommandWithSpaces);
           bestCommandName = potentialCommandWithSpaces;
           bestPositionalsConsumed = i;
           break;
         }
       }
     }
-    let commandConfig = bestCommandConfig;
+    let commandDefinition = bestCommandDefinition;
     const commandName = bestCommandName;
     const positionalsConsumed = bestPositionalsConsumed;
-    if (commandConfig) {
-      this.config = {
-        ...this.config,
-        ...(commandConfig.config || {}),
+    if (commandDefinition) {
+      this.#config = {
+        ...this.#config,
+        ...(commandDefinition.config || {}),
         options: {
-          ...(this.config.options || {}),
-          ...(commandConfig.config?.options || {}),
+          ...this.#config.options,
+          ...(commandDefinition.config?.options || {}),
         },
       };
-      const commandMetadata = commandConfig.metadata || {};
+      const commandMetadata = commandDefinition.metadata || {};
       this.metadata = {
         ...this.metadata,
         ...commandMetadata,
         options: {
-          ...(this.metadata.options || {}),
+          ...this.metadata.options,
           ...(commandMetadata.options || {}),
         },
       };
@@ -308,10 +335,10 @@ class Tako {
     }
 
     // Command Execution
-    if (!commandConfig && globalPositionals.length === 0 && this.#rootHandlers.length > 0) {
-      commandConfig = { handlers: this.#rootHandlers };
+    if (!commandDefinition && globalPositionals.length === 0 && this.#rootHandlers.length > 0) {
+      commandDefinition = { handlers: this.#rootHandlers };
     }
-    if (!commandConfig) {
+    if (!commandDefinition) {
       if (globalPositionals.length > 0) {
         this.print({
           message: `Command Error: Unknown command "${globalPositionals.join(" ")}"\n`,
@@ -325,29 +352,29 @@ class Tako {
       return;
     }
     try {
-      this.scriptArgs = util.parseArgs({
-        args: this.config.args,
-        options: this.config.options || {},
-        strict: this.config.strict,
-        allowPositionals: this.config.allowPositionals,
-        allowNegative: this.config.allowNegative,
-        tokens: this.config.tokens,
+      this.#scriptArgs = util.parseArgs({
+        args: this.#config.args,
+        options: this.#config.options,
+        strict: this.#config.strict,
+        allowPositionals: this.#config.allowPositionals,
+        allowNegative: this.#config.allowNegative,
+        tokens: this.#config.tokens,
       });
-      this.scriptArgs.positionals = this.scriptArgs.positionals.slice(positionalsConsumed);
+      this.#scriptArgs.positionals = this.#scriptArgs.positionals.slice(positionalsConsumed);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       this.print({ message: `Parse Error: ${message}\n`, style: "red", level: "error" });
       this.print({ message: this.getHelp(commandName) });
       process.exit(1);
     }
-    if (commandConfig?.handlers && commandConfig.handlers.length > 0) {
+    if (commandDefinition.handlers.length > 0) {
       let handlerIndex = 0;
-      const executeNext = () => {
-        if (handlerIndex < commandConfig.handlers.length) {
-          const handler = commandConfig.handlers[handlerIndex]!;
+      const next = () => {
+        if (handlerIndex < commandDefinition.handlers.length) {
+          const handler = commandDefinition.handlers[handlerIndex]!;
           handlerIndex++;
           try {
-            handler(this, executeNext);
+            handler(this, next);
           } catch (err: unknown) {
             const message = err instanceof Error ? err.message : String(err);
             this.print({ message: `Execution Error: ${message}\n`, style: "red", level: "error" });
@@ -356,7 +383,7 @@ class Tako {
           }
         }
       };
-      executeNext();
+      next();
     } else {
       this.print({ message: this.getHelp() });
       return;

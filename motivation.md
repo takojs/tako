@@ -6,7 +6,7 @@ Tako was born from a simple desire: to create a CLI framework that is **delightf
 
 ## Fulfilling the Need for a Modern, Zero-Dependency CLI
 
-The quest for a truly lean and controlled CLI framework is a shared motivation within the JavaScript ecosystem, and Tako is built to answer that call. Discussions, such as those highlighted in the Hono.js CLI project ([honojs/cli/issues/42](https://github.com/honojs/cli/issues/42)), reveal a clear community need for a dedicated, dependency-free CLI toolkit. This toolkit should leverage cross-runtime primitives (fundamental argument parsing functionalities) like `node:util.parseArgs` to offer a consistent API across various runtimes including Node.js, Deno, and Bun.
+The quest for a truly lean and controlled CLI framework is a shared motivation within the JavaScript ecosystem, and Tako is built to answer that call. Discussions, such as those highlighted in the Hono CLI project ([honojs/cli/issues/42](https://github.com/honojs/cli/issues/42)), reveal a clear community need for a dedicated, dependency-free CLI toolkit. This toolkit should leverage cross-runtime primitives (fundamental argument parsing functionalities) like `node:util.parseArgs` to offer a consistent API across various runtimes including Node.js, Deno, and Bun.
 
 Such a versatile and independent library, with its minimal footprint and complete control, is envisioned as ideal for building advanced CLI tools, particularly innovative applications like AI coding agents.
 
@@ -50,3 +50,20 @@ tako.cli({}, (c) => c.print({ message: crypto.randomUUID() }));
 ```
 
 In short, `Tako` is for developers who love TypeScript and want a CLI framework that, like an octopus, is **lightweight, cross-runtime, and elegantly powerful.**
+
+## Influenced by
+
+Tako is inspired by the design and philosophy of several innovative projects:
+
+- [Node.js](https://github.com/nodejs/node)
+- [Deno](https://github.com/denoland/deno)
+- [Bun](https://github.com/oven-sh/bun)
+- [workerd](https://github.com/cloudflare/workerd)
+- [QuickJS](https://github.com/bellard/quickjs)
+- [QuickJS-NG](https://github.com/quickjs-ng/quickjs)
+- [Hono](https://github.com/honojs/hono)
+- [Optique](https://github.com/dahlia/optique)
+- [Flask](https://github.com/pallets/flask)
+- [Click](https://github.com/pallets/click)
+- [Standard Schema](https://github.com/standard-schema/standard-schema)
+- [Inquirer](https://github.com/SBoudrias/Inquirer.js)

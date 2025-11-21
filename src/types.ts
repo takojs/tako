@@ -1,9 +1,13 @@
 import type { styleText } from "node:util";
 import type { Tako } from "./tako.ts";
 
-export type ConsoleLevel = "assert" | "debug" | "error" | "info" | "log" | "trace" | "warn" | "none";
+export type DeepReadonly<T> = T extends object ? { readonly [P in keyof T]: DeepReadonly<T[P]> } : T;
+
+export type Runtime = "node" | "deno" | "bun";
 
 export type Style = Parameters<typeof styleText>[0];
+
+export type ConsoleLevel = "assert" | "debug" | "error" | "info" | "log" | "trace" | "warn" | "none";
 
 export interface PrintArgs {
   message: string | string[];
@@ -19,11 +23,11 @@ export interface ParseArgsOptionsConfig {
   multiple?: boolean;
 }
 
-export type Options = Record<string, ParseArgsOptionsConfig>;
-
 export interface ParseArgsConfig {
   args?: string[];
-  options?: Options;
+  options?: {
+    [key: string]: ParseArgsOptionsConfig;
+  };
   strict?: boolean;
   allowPositionals?: boolean;
   allowNegative?: boolean;
@@ -31,33 +35,49 @@ export interface ParseArgsConfig {
 }
 
 export interface ParsedResults {
-  values: Record<string, any>;
+  values: {
+    [key: string]: string | boolean | (string | boolean)[] | undefined;
+  };
   positionals: string[];
-  tokens?: Record<string, any>[];
+  tokens?: {
+    // deno-lint-ignore no-explicit-any
+    [key: string]: any;
+  }[];
+}
+
+export type PrimitiveValue = string | number | bigint | boolean | symbol | null;
+
+export interface ScriptArgs {
+  values: {
+    [key: string]: PrimitiveValue | PrimitiveValue[] | undefined;
+  };
+  positionals: PrimitiveValue[];
 }
 
 export interface OptionsMetadata {
   help?: string;
   placeholder?: string;
   required?: boolean;
-  [key: string]: any;
+  [key: string]: PrimitiveValue | undefined;
 }
 
 export interface ArgsMetadata {
   help?: string;
   version?: string;
-  options?: Record<string, OptionsMetadata>;
+  options?: {
+    [key: string]: OptionsMetadata;
+  };
+}
+
+export interface TakoArgs {
+  config?: ParseArgsConfig;
+  metadata?: ArgsMetadata;
 }
 
 export type TakoHandler = (c: Tako, next: () => Promise<void> | void) => Promise<void> | void;
 
 export interface CommandDefinition {
   handlers: TakoHandler[];
-  config?: ParseArgsConfig;
-  metadata?: ArgsMetadata;
-}
-
-export interface TakoArgs {
   config?: ParseArgsConfig;
   metadata?: ArgsMetadata;
 }
