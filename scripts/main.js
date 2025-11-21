@@ -2,7 +2,7 @@
 import { Tako } from "./index.js";
 import pkg from "../package.json" with { type: "json" };
 
-const hello = {
+const helloArgs = {
   config: {
     options: {
       name: {
@@ -22,7 +22,7 @@ const hello = {
   },
 };
 
-const config = {
+const rootArgs = {
   metadata: {
     version: pkg.version,
     help: pkg.description,
@@ -31,9 +31,9 @@ const config = {
 
 const tako = new Tako();
 
-tako.command("hello", hello, (c) => {
+tako.command("hello", helloArgs, (c) => {
   const { values } = c.scriptArgs;
   c.print({ message: `Hello, ${values.name}!` });
 });
 
-tako.cli(config);
+tako.cli(rootArgs);
