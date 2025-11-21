@@ -4,7 +4,7 @@ import type { TakoArgs, TakoHandler } from "../src/index.ts";
 
 const authMiddleware: TakoHandler = (c, next) => {
   const { token } = c.scriptArgs.values;
-  const { value } = c.metadata.options?.token as { value: string };
+  const { value } = c.metadata.options?.token as { value?: string };
   if (!value || token !== value) {
     c.print({
       message: "Authentication failed!",
