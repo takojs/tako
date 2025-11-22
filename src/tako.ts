@@ -1,4 +1,4 @@
-import * as path from "node:path";
+import { basename } from "node:path";
 import * as process from "node:process";
 import * as util from "node:util";
 import { defaultConfig, defaultMetadata } from "./defaults.ts";
@@ -35,9 +35,9 @@ class Tako {
 
   print({ message, style, level, value }: PrintArgs): void {
     const effectiveLevel = level ?? "log";
-    const outputArgs = Array.isArray(message) ? [...message] : [message];
-    if (style && outputArgs.length > 0) {
-      outputArgs[0] = util.styleText(style, String(outputArgs[0]));
+    let outputArgs = Array.isArray(message) ? [...message] : [message];
+    if (style) {
+      outputArgs = outputArgs.map((arg) => util.styleText(style, String(arg)));
     }
     if (effectiveLevel === "assert") {
       console.assert(value ?? false, ...outputArgs);
@@ -106,11 +106,11 @@ class Tako {
         return usagePart;
       })
       .join(" ");
-    const runtimeName = path.basename(this.argv[0] || "");
-    const scriptName = path.basename(this.argv[1] || "");
+    const runtimeName = basename(this.argv[0] || "");
+    const scriptName = basename(this.argv[1] || "");
     const commandNames = Array.from(this.#commands.keys());
     const hasCommands = commandNames.length > 0;
-    let usageLine = `${runtimeName} ${scriptName}`;
+    let usageLine = this.metadata.cliName ?? `${runtimeName} ${scriptName}`;
     if (commandName) {
       usageLine += commandUsagePart;
       const hasSubCommandsForCommandName = Array.from(this.#commands.keys()).some(
@@ -233,7 +233,7 @@ class Tako {
     return this;
   }
 
-  cli({ config, metadata }: TakoArgs, ...rootHandlers: TakoHandler[]): void {
+  async cli({ config, metadata }: TakoArgs, ...rootHandlers: TakoHandler[]): Promise<void> {
     const { options: configOptions, ...argsConfig } = config || {};
     this.#config = {
       ...defaultConfig,
@@ -369,12 +369,12 @@ class Tako {
     }
     if (commandDefinition.handlers.length > 0) {
       let handlerIndex = 0;
-      const next = () => {
+      const next = async () => {
         if (handlerIndex < commandDefinition.handlers.length) {
           const handler = commandDefinition.handlers[handlerIndex]!;
           handlerIndex++;
           try {
-            handler(this, next);
+            await handler(this, next);
           } catch (err: unknown) {
             const message = err instanceof Error ? err.message : String(err);
             this.print({ message: `Execution Error: ${message}\n`, style: "red", level: "error" });
@@ -383,7 +383,7 @@ class Tako {
           }
         }
       };
-      next();
+      await next();
     } else {
       this.print({ message: this.getHelp() });
       return;

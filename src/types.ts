@@ -5,18 +5,18 @@ export type DeepReadonly<T> = T extends object ? { readonly [P in keyof T]: Deep
 
 export type Runtime = "node" | "deno" | "bun";
 
-export type Style = Parameters<typeof styleText>[0];
+export type ConsoleStyle = Parameters<typeof styleText>[0];
 
 export type ConsoleLevel = "assert" | "debug" | "error" | "info" | "log" | "trace" | "warn" | "none";
 
 export interface PrintArgs {
   message: string | string[];
-  style?: Style;
+  style?: ConsoleStyle;
   level?: ConsoleLevel;
   value?: boolean;
 }
 
-export interface ParseArgsOptionsConfig {
+export interface ParseArgsOptionDescriptor {
   type: "boolean" | "string";
   short?: string;
   default?: string | boolean | string[] | boolean[];
@@ -26,7 +26,7 @@ export interface ParseArgsOptionsConfig {
 export interface ParseArgsConfig {
   args?: string[];
   options?: {
-    [key: string]: ParseArgsOptionsConfig;
+    [key: string]: ParseArgsOptionDescriptor;
   };
   strict?: boolean;
   allowPositionals?: boolean;
@@ -34,15 +34,37 @@ export interface ParseArgsConfig {
   tokens?: boolean;
 }
 
+export type OptionToken = {
+  kind: "option";
+  index: number;
+  name: string;
+  rawName: string;
+  value: string;
+  inlineValue: boolean;
+} | {
+  kind: "option";
+  index: number;
+  name: string;
+  rawName: string;
+  value: undefined;
+  inlineValue: undefined;
+};
+
+export type Token = OptionToken | {
+  kind: "positional";
+  index: number;
+  value: string;
+} | {
+  kind: "option-terminator";
+  index: number;
+};
+
 export interface ParsedResults {
   values: {
     [key: string]: string | boolean | (string | boolean)[] | undefined;
   };
   positionals: string[];
-  tokens?: {
-    // deno-lint-ignore no-explicit-any
-    [key: string]: any;
-  }[];
+  tokens?: Token[];
 }
 
 export type PrimitiveValue = string | number | bigint | boolean | symbol | null;
@@ -62,6 +84,7 @@ export interface OptionsMetadata {
 }
 
 export interface ArgsMetadata {
+  cliName?: string;
   help?: string;
   version?: string;
   options?: {

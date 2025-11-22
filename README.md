@@ -168,6 +168,14 @@ Prints a message to the console.
 - `args.level`: The console level (e.g., `log`, `error`). Defaults to `log`.
 - `args.value`: A boolean value, primarily used with the `assert` level to determine if an assertion passes or fails.
 
+### `.argv`
+
+A **readonly** property that returns an array containing the command-line arguments passed when the process was launched. The first element is the path to the executable, the second element is the path to the script being executed, and the remaining elements are the additional command-line arguments.
+
+### `.argv0`
+
+A **readonly** property that stores a copy of the original value of `argv[0]` passed when the process started. This is useful for cases where the process is launched in a way that might alter the `argv[0]` value, such as with a custom process name.
+
 ### `.scriptArgs`
 
 A **readonly** property that provides access to the full parsed command-line arguments, including raw tokens if enabled. Internally managed as a private property, it exposes a `ParsedResults` object with three properties:

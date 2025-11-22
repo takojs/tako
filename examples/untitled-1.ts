@@ -3,4 +3,4 @@ import { Tako } from "../src/index.ts";
 
 const tako = new Tako();
 
-tako.cli({}, (c) => c.print({ message: crypto.randomUUID() }));
+await tako.cli({}, (c) => c.print({ message: crypto.randomUUID() }));

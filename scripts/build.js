@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import * as fs from "node:fs";
-import * as path from "node:path";
+import { cpSync, globSync, mkdirSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 import * as esbuild from "esbuild";
 import pkg from "../package.json" with { type: "json" };
 
@@ -35,12 +35,12 @@ const patterns = [
   "src/**/*.cts",
   "src/**/*.mts",
 ];
-const files = patterns.flatMap((pattern) => fs.globSync(pattern));
+const files = patterns.flatMap((pattern) => globSync(pattern));
 
 for (const file of files) {
-  const relativePath = path.relative("src", file);
-  const destPath = path.join(outdir, relativePath);
-  const destDir = path.dirname(destPath);
-  fs.mkdirSync(destDir, { recursive: true });
-  fs.cpSync(file, destPath);
+  const relativePath = relative("src", file);
+  const destPath = join(outdir, relativePath);
+  const destDir = dirname(destPath);
+  mkdirSync(destDir, { recursive: true });
+  cpSync(file, destPath);
 }

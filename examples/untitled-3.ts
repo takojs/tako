@@ -50,4 +50,4 @@ tako.command("secret", secretArgs, authMiddleware, (c) => {
   c.print({ message: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" });
 });
 
-tako.cli(rootArgs);
+await tako.cli(rootArgs);

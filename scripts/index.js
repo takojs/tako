@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: MIT
  * SPDX-FileCopyrightText: 2025 Takuro Kitahara
- * SPDX-FileComment: Version 1.2.0
+ * SPDX-FileComment: Version 1.3.0
  */
 var __defProp = Object.defineProperty;
 var __typeError = (msg) => {
@@ -53,7 +53,7 @@ var defaultMetadata = {
 };
 
 // src/tako.ts
-import * as path from "node:path";
+import { basename } from "node:path";
 import * as process from "node:process";
 import * as util from "node:util";
 var _scriptArgs, _config, _commands, _rootHandlers;
@@ -76,9 +76,9 @@ var Tako = class {
   }
   print({ message, style, level, value }) {
     const effectiveLevel = level ?? "log";
-    const outputArgs = Array.isArray(message) ? [...message] : [message];
-    if (style && outputArgs.length > 0) {
-      outputArgs[0] = util.styleText(style, String(outputArgs[0]));
+    let outputArgs = Array.isArray(message) ? [...message] : [message];
+    if (style) {
+      outputArgs = outputArgs.map((arg) => util.styleText(style, String(arg)));
     }
     if (effectiveLevel === "assert") {
       console.assert(value ?? false, ...outputArgs);
@@ -134,11 +134,11 @@ var Tako = class {
       }
       return usagePart;
     }).join(" ");
-    const runtimeName = path.basename(this.argv[0] || "");
-    const scriptName = path.basename(this.argv[1] || "");
+    const runtimeName = basename(this.argv[0] || "");
+    const scriptName = basename(this.argv[1] || "");
     const commandNames = Array.from(__privateGet(this, _commands).keys());
     const hasCommands = commandNames.length > 0;
-    let usageLine = `${runtimeName} ${scriptName}`;
+    let usageLine = this.metadata.cliName ?? `${runtimeName} ${scriptName}`;
     if (commandName) {
       usageLine += commandUsagePart;
       const hasSubCommandsForCommandName = Array.from(__privateGet(this, _commands).keys()).some(
@@ -247,7 +247,7 @@ var Tako = class {
     __privateGet(this, _commands).set(normalizedName, commandDefinition);
     return this;
   }
-  cli({ config, metadata }, ...rootHandlers) {
+  async cli({ config, metadata }, ...rootHandlers) {
     const { options: configOptions, ...argsConfig } = config || {};
     __privateSet(this, _config, {
       ...defaultConfig,
@@ -378,12 +378,12 @@ var Tako = class {
     }
     if (commandDefinition.handlers.length > 0) {
       let handlerIndex = 0;
-      const next = () => {
+      const next = async () => {
         if (handlerIndex < commandDefinition.handlers.length) {
           const handler = commandDefinition.handlers[handlerIndex];
           handlerIndex++;
           try {
-            handler(this, next);
+            await handler(this, next);
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             this.print({ message: `Execution Error: ${message}
@@ -393,7 +393,7 @@ var Tako = class {
           }
         }
       };
-      next();
+      await next();
     } else {
       this.print({ message: this.getHelp() });
       return;

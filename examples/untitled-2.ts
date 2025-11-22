@@ -36,4 +36,4 @@ tako.command("hello", helloArgs, (c) => {
   c.print({ message: `Hello, ${values.name}!` });
 });
 
-tako.cli(rootArgs);
+await tako.cli(rootArgs);

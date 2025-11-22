@@ -46,7 +46,7 @@ import { Tako } from "@takojs/tako";
 
 const tako = new Tako();
 
-tako.cli({}, (c) => c.print({ message: crypto.randomUUID() }));
+await tako.cli({}, (c) => c.print({ message: crypto.randomUUID() }));
 ```
 
 In short, `Tako` is for developers who love TypeScript and want a CLI framework that, like an octopus, is **lightweight, cross-runtime, and elegantly powerful.**
