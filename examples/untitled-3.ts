@@ -14,7 +14,7 @@ const authMiddleware: TakoHandler = (c, next) => {
     return;
   }
   c.print({ message: `Authenticated!`, style: "bgGreen" });
-  next();
+  return next();
 };
 
 const secretArgs: TakoArgs = {

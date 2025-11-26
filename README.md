@@ -168,6 +168,12 @@ Prints a message to the console.
 - `args.level`: The console level (e.g., `log`, `error`). Defaults to `log`.
 - `args.value`: A boolean value, primarily used with the `assert` level to determine if an assertion passes or fails.
 
+### `.fail(err)`
+
+Handles errors by printing a standardized, formatted error message to the console and terminating the process with an exit code of `1`. This ensures consistent error handling across the CLI. The method's return type is `never`, as it always exits the application.
+
+- `err`: The error to handle. It can be an `Error` object, a string, or any other type. The error message will be extracted and displayed.
+
 ### `.argv`
 
 A **readonly** property that returns an array containing the command-line arguments passed when the process was launched. The first element is the path to the executable, the second element is the path to the script being executed, and the remaining elements are the additional command-line arguments.

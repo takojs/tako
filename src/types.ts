@@ -1,11 +1,15 @@
-import type { styleText } from "node:util";
+import type { BackgroundColors, ForegroundColors, Modifiers } from "./colors.ts";
 import type { Tako } from "./tako.ts";
 
 export type DeepReadonly<T> = T extends object ? { readonly [P in keyof T]: DeepReadonly<T[P]> } : T;
 
 export type Runtime = "node" | "deno" | "bun";
 
-export type ConsoleStyle = Parameters<typeof styleText>[0];
+export type ConsoleStyle =
+  | ForegroundColors
+  | BackgroundColors
+  | Modifiers
+  | (ForegroundColors | BackgroundColors | Modifiers)[];
 
 export type ConsoleLevel = "assert" | "debug" | "error" | "info" | "log" | "trace" | "warn" | "none";
 
@@ -80,13 +84,15 @@ export interface OptionsMetadata {
   help?: string;
   placeholder?: string;
   required?: boolean;
-  [key: string]: PrimitiveValue | undefined;
+  [key: string]: PrimitiveValue | PrimitiveValue[] | undefined;
 }
 
 export interface ArgsMetadata {
   cliName?: string;
-  help?: string;
   version?: string;
+  help?: string;
+  placeholder?: string;
+  required?: boolean;
   options?: {
     [key: string]: OptionsMetadata;
   };
