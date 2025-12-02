@@ -1,7 +1,10 @@
 #!/usr/bin/env deno
 // @ts-ignore: Required JSR import syntax
 // deno-lint-ignore no-import-prefix no-unversioned-import
-import { Tako, TakoArgs } from "jsr:@takojs/tako";
+import { middleware as m, Tako } from "jsr:@takojs/tako";
+// @ts-ignore: Required JSR import syntax
+// deno-lint-ignore no-import-prefix no-unversioned-import
+import type { TakoArgs } from "jsr:@takojs/tako";
 // @ts-ignore: Required JSR import syntax
 // deno-lint-ignore no-import-prefix no-unversioned-import
 import * as v from "jsr:@valibot/valibot";
