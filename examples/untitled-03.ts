@@ -5,7 +5,7 @@ import type { TakoArgs, TakoHandler } from "../src/index.ts";
 const authMiddleware: TakoHandler = (c, next) => {
   const { token } = c.scriptArgs.values;
   const { value } = c.metadata.options?.token as { value?: string };
-  if (!value || token !== value) {
+  if (typeof token !== "string" || token !== value) {
     c.print({
       message: "Authentication failed!",
       style: "red",
@@ -13,7 +13,7 @@ const authMiddleware: TakoHandler = (c, next) => {
     });
     return;
   }
-  c.print({ message: `Authenticated!`, style: "bgGreen" });
+  c.print({ message: "Authenticated!", style: "bgGreen" });
   return next();
 };
 
@@ -27,7 +27,7 @@ const secretArgs: TakoArgs = {
     },
   },
   metadata: {
-    help: "A command that requires authentication.",
+    help: "This command requires authentication.",
     options: {
       token: {
         help: "Your secret.",

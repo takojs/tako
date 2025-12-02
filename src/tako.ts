@@ -9,7 +9,6 @@ import type {
   ParseArgsConfig,
   ParsedResults,
   PrintArgs,
-  Runtime,
   ScriptArgs,
   TakoArgs,
   TakoHandler,
@@ -18,10 +17,12 @@ import type {
 class Tako {
   readonly argv: readonly string[] = process.argv;
   readonly argv0: string = process.argv0;
+
   #scriptArgs: ParsedResults = { values: {}, positionals: [] };
   args: ScriptArgs = { values: {}, positionals: [] };
   #config: ParseArgsConfig = { options: {} };
   metadata: ArgsMetadata = { options: {} };
+
   #commands: Map<string, CommandDefinition> = new Map();
   #rootHandlers: TakoHandler[] = [];
 
@@ -33,9 +34,10 @@ class Tako {
     return this.#config;
   }
 
-  print({ message, style, level, value }: PrintArgs): void {
+  print({ message, style, level, value }: PrintArgs = {}): void {
+    const effectiveMessage = message ?? "";
     const effectiveLevel = level ?? "log";
-    let outputArgs = Array.isArray(message) ? [...message] : [message];
+    let outputArgs = Array.isArray(effectiveMessage) ? [...effectiveMessage] : [effectiveMessage];
     if (style) {
       outputArgs = outputArgs.map((arg) => util.styleText(style, String(arg)));
     }
@@ -62,7 +64,7 @@ class Tako {
     process.exit(1);
   }
 
-  getRuntimeKey(): Runtime {
+  getRuntimeKey(): "node" | "deno" | "bun" {
     // deno-lint-ignore no-explicit-any
     if (typeof (globalThis as any).Bun !== "undefined") {
       return "bun";
@@ -78,8 +80,9 @@ class Tako {
     return this.metadata?.version ?? "";
   }
 
-  getHelp(commandName?: string): string {
+  getHelp(target?: string): string {
     const sections: string[] = [];
+    const commandName = target?.split(" ").filter(Boolean).join(" ");
     let currentOptions = this.#config.options;
     let currentMetadataOptions = this.metadata.options;
     let currentCommandMetadata: ArgsMetadata | undefined;
@@ -217,37 +220,32 @@ class Tako {
     return docs.join("\n\n");
   }
 
-  #mergeConfig(base?: ParseArgsConfig, overrides?: ParseArgsConfig): ParseArgsConfig {
+  #mergeConfig(target?: ParseArgsConfig, source?: ParseArgsConfig): ParseArgsConfig {
     return {
-      ...(base || {}),
-      ...(overrides || {}),
-      options: {
-        ...(base?.options || {}),
-        ...(overrides?.options || {}),
-      },
+      ...(target || {}),
+      ...(source || {}),
+      options: { ...(target?.options || {}), ...(source?.options || {}) },
     };
   }
 
-  #mergeMetadata(base?: ArgsMetadata, overrides?: ArgsMetadata): ArgsMetadata {
+  #mergeMetadata(target?: ArgsMetadata, source?: ArgsMetadata): ArgsMetadata {
     return {
-      ...(base || {}),
-      ...(overrides || {}),
-      options: {
-        ...(base?.options || {}),
-        ...(overrides?.options || {}),
-      },
+      ...(target || {}),
+      ...(source || {}),
+      options: { ...(target?.options || {}), ...(source?.options || {}) },
     };
   }
 
-  command(name: string, { config, metadata }: TakoArgs, ...handlers: TakoHandler[]): this {
-    const normalizedName = name.trim().split(" ").filter(Boolean).join(" ");
+  command(name: string, { config, metadata }: TakoArgs = {}, ...handlers: TakoHandler[]): this {
+    const normalizedName = name?.split(" ").filter(Boolean).join(" ");
+    const validHandlers = handlers.filter((h) => typeof h === "function");
     if (!normalizedName) {
-      this.#rootHandlers.push(...handlers);
+      this.#rootHandlers.push(...validHandlers);
       return this;
     }
     const existingDefinition = this.#commands.get(normalizedName);
     const commandDefinition = {
-      handlers: [...(existingDefinition?.handlers || []), ...handlers],
+      handlers: [...(existingDefinition?.handlers || []), ...validHandlers],
       config: this.#mergeConfig(existingDefinition?.config, config),
       metadata: this.#mergeMetadata(existingDefinition?.metadata, metadata),
     };
@@ -255,10 +253,11 @@ class Tako {
     return this;
   }
 
-  async cli({ config, metadata }: TakoArgs, ...rootHandlers: TakoHandler[]): Promise<void> {
+  async cli({ config, metadata }: TakoArgs = {}, ...rootHandlers: TakoHandler[]): Promise<void> {
+    const validHandlers = rootHandlers.filter((h) => typeof h === "function");
     this.#config = this.#mergeConfig(defaultConfig, config);
     this.metadata = this.#mergeMetadata(defaultMetadata, metadata);
-    this.#rootHandlers.push(...rootHandlers);
+    this.#rootHandlers.push(...validHandlers);
 
     // Global Parse
     let globalParseOptions = this.#config.options;
@@ -275,7 +274,10 @@ class Tako {
         tokens: this.#config.tokens,
       });
     } catch (err: unknown) {
-      this.fail(err);
+      if (this.metadata?.cliExit) {
+        this.fail(err);
+      }
+      throw err;
     }
     const { positionals: globalPositionals, values: globalValues } = this.#scriptArgs;
     if (globalValues.version) {
@@ -321,12 +323,16 @@ class Tako {
     }
 
     // Command Parse
-    if (!commandDefinition && globalPositionals.length === 0 && this.#rootHandlers.length > 0) {
+    if (!commandDefinition && this.#rootHandlers.length > 0) {
       commandDefinition = { handlers: this.#rootHandlers };
     }
     if (!commandDefinition) {
       if (globalPositionals.length > 0) {
-        this.fail(`Unknown command '${globalPositionals.join(" ")}'`);
+        const msg = `Unknown command '${globalPositionals.join(" ")}'`;
+        if (this.metadata?.cliExit) {
+          this.fail(msg);
+        }
+        throw new Error(msg);
       }
       this.print({ message: this.getHelp() });
       return;
@@ -342,7 +348,10 @@ class Tako {
       });
       this.#scriptArgs.positionals = this.#scriptArgs.positionals.slice(positionalsConsumed);
     } catch (err: unknown) {
-      this.fail(err);
+      if (this.metadata?.cliExit) {
+        this.fail(err);
+      }
+      throw err;
     }
 
     // Validate Arguments
@@ -358,14 +367,22 @@ class Tako {
           const valuePlaceholder = meta.placeholder || "<value>";
           const placeholderPart = opt?.type === "string" ? ` ${valuePlaceholder}` : "";
           const optionDefinition = `${shortOptionPart}${longOptionPart}${placeholderPart}`;
-          this.fail(`Missing required option '${optionDefinition}'`);
+          const msg = `Missing required option '${optionDefinition}'`;
+          if (this.metadata?.cliExit) {
+            this.fail(msg);
+          }
+          throw new Error(msg);
         }
       }
     }
     if (this.metadata.required) {
       if (this.#scriptArgs.positionals.length === 0) {
         const placeholderPart = this.metadata.placeholder ? ` '${this.metadata.placeholder}'` : "";
-        this.fail(`Missing required positional arguments${placeholderPart}`);
+        const msg = `Missing required positional arguments${placeholderPart}`;
+        if (this.metadata?.cliExit) {
+          this.fail(msg);
+        }
+        throw new Error(msg);
       }
     }
 
@@ -379,7 +396,10 @@ class Tako {
           try {
             await handler(this, next);
           } catch (err: unknown) {
-            this.fail(err);
+            if (this.metadata?.cliExit) {
+              this.fail(err);
+            }
+            throw err;
           }
         }
       };

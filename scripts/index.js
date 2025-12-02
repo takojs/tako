@@ -3,13 +3,17 @@
  *
  * SPDX-License-Identifier: MIT
  * SPDX-FileCopyrightText: 2025 Takuro Kitahara
- * SPDX-FileComment: Version 1.4.0
+ * SPDX-FileComment: Version 1.5.0
  */
 var __defProp = Object.defineProperty;
 var __typeError = (msg) => {
   throw TypeError(msg);
 };
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot " + msg);
 var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
@@ -39,6 +43,7 @@ var defaultConfig = {
   tokens: false
 };
 var defaultMetadata = {
+  cliExit: true,
   options: {
     gen: {
       help: "Generate documentation.",
@@ -76,9 +81,10 @@ var Tako = class {
   get config() {
     return __privateGet(this, _config);
   }
-  print({ message, style, level, value }) {
+  print({ message, style, level, value } = {}) {
+    const effectiveMessage = message ?? "";
     const effectiveLevel = level ?? "log";
-    let outputArgs = Array.isArray(message) ? [...message] : [message];
+    let outputArgs = Array.isArray(effectiveMessage) ? [...effectiveMessage] : [effectiveMessage];
     if (style) {
       outputArgs = outputArgs.map((arg) => util.styleText(style, String(arg)));
     }
@@ -117,8 +123,9 @@ var Tako = class {
   getVersion() {
     return this.metadata?.version ?? "";
   }
-  getHelp(commandName) {
+  getHelp(target) {
     const sections = [];
+    const commandName = target?.split(" ").filter(Boolean).join(" ");
     let currentOptions = __privateGet(this, _config).options;
     let currentMetadataOptions = this.metadata.options;
     let currentCommandMetadata;
@@ -243,25 +250,27 @@ ${commandLines.join("\n")}`);
     }
     return docs.join("\n\n");
   }
-  command(name, { config, metadata }, ...handlers) {
-    const normalizedName = name.trim().split(" ").filter(Boolean).join(" ");
+  command(name, { config, metadata } = {}, ...handlers) {
+    const normalizedName = name?.split(" ").filter(Boolean).join(" ");
+    const validHandlers = handlers.filter((h) => typeof h === "function");
     if (!normalizedName) {
-      __privateGet(this, _rootHandlers).push(...handlers);
+      __privateGet(this, _rootHandlers).push(...validHandlers);
       return this;
     }
     const existingDefinition = __privateGet(this, _commands).get(normalizedName);
     const commandDefinition = {
-      handlers: [...existingDefinition?.handlers || [], ...handlers],
+      handlers: [...existingDefinition?.handlers || [], ...validHandlers],
       config: __privateMethod(this, _Tako_instances, mergeConfig_fn).call(this, existingDefinition?.config, config),
       metadata: __privateMethod(this, _Tako_instances, mergeMetadata_fn).call(this, existingDefinition?.metadata, metadata)
     };
     __privateGet(this, _commands).set(normalizedName, commandDefinition);
     return this;
   }
-  async cli({ config, metadata }, ...rootHandlers) {
+  async cli({ config, metadata } = {}, ...rootHandlers) {
+    const validHandlers = rootHandlers.filter((h) => typeof h === "function");
     __privateSet(this, _config, __privateMethod(this, _Tako_instances, mergeConfig_fn).call(this, defaultConfig, config));
     this.metadata = __privateMethod(this, _Tako_instances, mergeMetadata_fn).call(this, defaultMetadata, metadata);
-    __privateGet(this, _rootHandlers).push(...rootHandlers);
+    __privateGet(this, _rootHandlers).push(...validHandlers);
     let globalParseOptions = __privateGet(this, _config).options;
     for (const commandDefinition2 of __privateGet(this, _commands).values()) {
       globalParseOptions = { ...globalParseOptions, ...commandDefinition2.config?.options || {} };
@@ -276,7 +285,10 @@ ${commandLines.join("\n")}`);
         tokens: __privateGet(this, _config).tokens
       }));
     } catch (err) {
-      this.fail(err);
+      if (this.metadata?.cliExit) {
+        this.fail(err);
+      }
+      throw err;
     }
     const { positionals: globalPositionals, values: globalValues } = __privateGet(this, _scriptArgs);
     if (globalValues.version) {
@@ -318,12 +330,16 @@ ${commandLines.join("\n")}`);
       this.print({ message: this.getHelp(commandName) });
       return;
     }
-    if (!commandDefinition && globalPositionals.length === 0 && __privateGet(this, _rootHandlers).length > 0) {
+    if (!commandDefinition && __privateGet(this, _rootHandlers).length > 0) {
       commandDefinition = { handlers: __privateGet(this, _rootHandlers) };
     }
     if (!commandDefinition) {
       if (globalPositionals.length > 0) {
-        this.fail(`Unknown command '${globalPositionals.join(" ")}'`);
+        const msg = `Unknown command '${globalPositionals.join(" ")}'`;
+        if (this.metadata?.cliExit) {
+          this.fail(msg);
+        }
+        throw new Error(msg);
       }
       this.print({ message: this.getHelp() });
       return;
@@ -339,7 +355,10 @@ ${commandLines.join("\n")}`);
       }));
       __privateGet(this, _scriptArgs).positionals = __privateGet(this, _scriptArgs).positionals.slice(positionalsConsumed);
     } catch (err) {
-      this.fail(err);
+      if (this.metadata?.cliExit) {
+        this.fail(err);
+      }
+      throw err;
     }
     if (this.metadata.options) {
       for (const [name, meta] of Object.entries(this.metadata.options)) {
@@ -353,14 +372,22 @@ ${commandLines.join("\n")}`);
           const valuePlaceholder = meta.placeholder || "<value>";
           const placeholderPart = opt?.type === "string" ? ` ${valuePlaceholder}` : "";
           const optionDefinition = `${shortOptionPart}${longOptionPart}${placeholderPart}`;
-          this.fail(`Missing required option '${optionDefinition}'`);
+          const msg = `Missing required option '${optionDefinition}'`;
+          if (this.metadata?.cliExit) {
+            this.fail(msg);
+          }
+          throw new Error(msg);
         }
       }
     }
     if (this.metadata.required) {
       if (__privateGet(this, _scriptArgs).positionals.length === 0) {
         const placeholderPart = this.metadata.placeholder ? ` '${this.metadata.placeholder}'` : "";
-        this.fail(`Missing required positional arguments${placeholderPart}`);
+        const msg = `Missing required positional arguments${placeholderPart}`;
+        if (this.metadata?.cliExit) {
+          this.fail(msg);
+        }
+        throw new Error(msg);
       }
     }
     if (commandDefinition.handlers.length > 0) {
@@ -372,7 +399,10 @@ ${commandLines.join("\n")}`);
           try {
             await handler(this, next);
           } catch (err) {
-            this.fail(err);
+            if (this.metadata?.cliExit) {
+              this.fail(err);
+            }
+            throw err;
           }
         }
       };
@@ -387,28 +417,76 @@ _config = new WeakMap();
 _commands = new WeakMap();
 _rootHandlers = new WeakMap();
 _Tako_instances = new WeakSet();
-mergeConfig_fn = function(base, overrides) {
+mergeConfig_fn = function(target, source) {
   return {
-    ...base || {},
-    ...overrides || {},
-    options: {
-      ...base?.options || {},
-      ...overrides?.options || {}
-    }
+    ...target || {},
+    ...source || {},
+    options: { ...target?.options || {}, ...source?.options || {} }
   };
 };
-mergeMetadata_fn = function(base, overrides) {
+mergeMetadata_fn = function(target, source) {
   return {
-    ...base || {},
-    ...overrides || {},
-    options: {
-      ...base?.options || {},
-      ...overrides?.options || {}
-    }
+    ...target || {},
+    ...source || {},
+    options: { ...target?.options || {}, ...source?.options || {} }
   };
 };
+
+// src/helpers.ts
+var helpers_exports = {};
+__export(helpers_exports, {
+  v: () => v
+});
+async function v(input, ...schemas) {
+  let lastResult;
+  for (const schema of schemas) {
+    let result = schema["~standard"].validate(input);
+    if (result instanceof Promise) {
+      result = await result;
+    }
+    if (result.issues) {
+      throw new Error(`Validation failed.
+${JSON.stringify(result.issues, null, 2)}`);
+    }
+    lastResult = result;
+  }
+  if (!lastResult) {
+    throw new Error("No schema provided.");
+  }
+  return lastResult.value;
+}
+
+// src/middlewares.ts
+var middlewares_exports = {};
+__export(middlewares_exports, {
+  v: () => v2
+});
+var targets = ["argv", "argv0", "scriptArgs", "args", "config", "metadata"];
+function v2(target, ...schemas) {
+  return async (c, next) => {
+    if (!targets.includes(target)) {
+      throw new Error(
+        `Invalid validation target '${target}'.
+Supported targets are '${targets.join("', '")}'.`
+      );
+    }
+    for (const schema of schemas) {
+      let result = schema["~standard"].validate(c[target]);
+      if (result instanceof Promise) {
+        result = await result;
+      }
+      if (result.issues) {
+        throw new Error(`Validation failed.
+${JSON.stringify(result.issues, null, 2)}`);
+      }
+    }
+    return next();
+  };
+}
 export {
   Tako,
   defaultConfig,
-  defaultMetadata
+  defaultMetadata,
+  helpers_exports as helper,
+  middlewares_exports as middleware
 };

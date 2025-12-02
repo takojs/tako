@@ -22,6 +22,7 @@ export const defaultConfig: ParseArgsConfig = {
 };
 
 export const defaultMetadata: ArgsMetadata = {
+  cliExit: true,
   options: {
     gen: {
       help: "Generate documentation.",

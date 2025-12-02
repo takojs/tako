@@ -3,8 +3,6 @@ import type { Tako } from "./tako.ts";
 
 export type DeepReadonly<T> = T extends object ? { readonly [P in keyof T]: DeepReadonly<T[P]> } : T;
 
-export type Runtime = "node" | "deno" | "bun";
-
 export type ConsoleStyle =
   | ForegroundColors
   | BackgroundColors
@@ -14,7 +12,7 @@ export type ConsoleStyle =
 export type ConsoleLevel = "assert" | "debug" | "error" | "info" | "log" | "trace" | "warn" | "none";
 
 export interface PrintArgs {
-  message: string | string[];
+  message?: string | string[];
   style?: ConsoleStyle;
   level?: ConsoleLevel;
   value?: boolean;
@@ -71,7 +69,7 @@ export interface ParsedResults {
   tokens?: Token[];
 }
 
-export type PrimitiveValue = string | number | bigint | boolean | symbol | null;
+export type PrimitiveValue = string | number | bigint | boolean | null;
 
 export interface ScriptArgs {
   values: {
@@ -88,6 +86,7 @@ export interface OptionsMetadata {
 }
 
 export interface ArgsMetadata {
+  cliExit?: boolean;
   cliName?: string;
   version?: string;
   help?: string;

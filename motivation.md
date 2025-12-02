@@ -30,8 +30,8 @@ Tako embodies the philosophy that a CLI framework should be a foundational, stab
 
 Many libraries add TypeScript support as an afterthought. `Tako` is **TypeScript-native**. This means:
 
-- **Effortless Type Inference**: Define your commands, and `Tako` infers the types for your arguments and options automatically. No more manual type casting or wrestling with `@types` packages.
-- **Rock-Solid Validation**: With a type-first foundation, integrating with validation libraries like Zod is a natural fit, ensuring your CLI is robust and error-resistant.
+- **Effortless Type Inference**: A primary goal for `Tako` is to automatically infer command argument and option types, a significant and difficult challenge aimed at eliminating manual type casting and `@types` package hassles.
+- **Rock-Solid Validation**: With a type-first foundation, integrating with validation libraries like Zod, Valibot, and ArkType is a natural fit, ensuring your CLI is robust and error-resistant.
 - **Smarter IDEs**: Enjoy superior autocompletion, inline documentation, and refactoring support that just works.
 
 ### Elegant Simplicity
@@ -40,6 +40,7 @@ Many libraries add TypeScript support as an afterthought. `Tako` is **TypeScript
 
 - **Explicit Control**: Fine-grained control over parsing and execution flow.
 - **Middleware-style Architecture**: A simple yet powerful handler system, similar to those in web frameworks, that lets you compose command logic elegantly.
+- **Flexible Error Handling**: Choose whether Tako exits on failure or throws an error, making it seamless to integrate into tests or other programmatic workflows.
 
 ```javascript
 import { Tako } from "@takojs/tako";

@@ -1,6 +1,6 @@
 {
   "name": "@takojs/tako",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Tako - a CLI framework that works on any JavaScript runtime",
   "main": "dist/index.js",
   "scripts": {

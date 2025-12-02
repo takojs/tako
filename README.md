@@ -5,7 +5,7 @@
 [![npm](https://img.shields.io/npm/v/@takojs/tako)](https://www.npmjs.com/package/@takojs/tako)
 [![JSR](https://jsr.io/badges/@takojs/tako)](https://jsr.io/@takojs/tako)
 
-Tako - **means octopus 🐙 in Japanese** - is a lightweight and easy-to-use CLI framework.
+[Tako](https://takojs.github.io/) - **means octopus 🐙 in Japanese** - is a lightweight and easy-to-use CLI framework.
 
 A CLI framework that works on any JavaScript runtime: Node.js, Deno, and Bun.
 
@@ -56,60 +56,34 @@ You can find complete, runnable examples in the [`examples`](examples) directory
 
 ### Root Handler
 
-You can define a handler that runs when no command is specified.
+This example demonstrates how to define a root handler, which runs when no command is specified.
 
-**Source:** [`examples/untitled-1.ts`](examples/untitled-1.ts)
+**Source:** [`examples/untitled-01.ts`](examples/untitled-01.ts)
 
 **Run it:**
 
 ```bash
-$ node examples/untitled-1.ts
+$ node examples/untitled-01.ts
 919108f7-52d1-4320-9bac-f847db4148a8
 ```
 
 ### Basic Command
 
-This example demonstrates how to define a simple command with options.
+This example demonstrates how to define a simple command with options, including automatic help message generation from its metadata.
 
-**Source:** [`examples/untitled-2.ts`](examples/untitled-2.ts)
+**Source:** [`examples/untitled-02.ts`](examples/untitled-02.ts)
 
 **Run it:**
 
 ```bash
-$ node examples/untitled-2.ts hello
+$ node examples/untitled-02.ts hello
 Hello, World!
 
-$ node examples/untitled-2.ts hello -n Tako
+$ node examples/untitled-02.ts hello -n Tako
 Hello, Tako!
-```
 
-### Middleware
-
-Tako supports a middleware pattern for chaining handlers. This is useful for tasks like authentication.
-
-**Source:** [`examples/untitled-3.ts`](examples/untitled-3.ts)
-
-**Run it:**
-
-```bash
-$ node examples/untitled-3.ts secret
-Authentication failed!
-
-$ node examples/untitled-3.ts secret -t dQw4w9WgXcQ
-Authenticated!
-https://www.youtube.com/watch?v=dQw4w9WgXcQ
-```
-
-### Automatic Help Generation
-
-Help messages are automatically generated from your command and option metadata.
-
-```bash
-$ node examples/untitled-3.ts -h
-```
-
-```
-Usage: node untitled-3.ts [COMMAND]
+$ node examples/untitled-02.ts -h
+Usage: node untitled-02.ts [OPTIONS] COMMAND [ARGS]...
 
   Untitled
 
@@ -119,19 +93,102 @@ Options:
   -v, --version   Show version.
 
 Commands:
-  secret    A command that requires authentication.
+  hello  Prints a greeting.
 ```
 
-### Deno and JSR Usage
+### Middleware
 
-This example demonstrates a root handler running in Deno with Tako imported from JSR.
+This example demonstrates how Tako supports a middleware pattern for chaining handlers, which is useful for tasks like authentication.
 
-**Source:** [`examples/jsr-untitled-1.ts`](examples/jsr-untitled-1.ts)
+**Source:** [`examples/untitled-03.ts`](examples/untitled-03.ts)
 
 **Run it:**
 
 ```bash
-$ deno --no-npm examples/jsr-untitled-1.ts
+$ node examples/untitled-03.ts secret
+Authentication failed!
+
+$ node examples/untitled-03.ts secret -t dQw4w9WgXcQ
+Authenticated!
+https://www.youtube.com/watch?v=dQw4w9WgXcQ
+```
+
+### Standard Schema
+
+This example demonstrates custom validation using [Standard Schema](https://standardschema.dev/), a common interface for JavaScript/TypeScript libraries like [Zod](https://zod.dev/), [Valibot](https://valibot.dev/), and [ArkType](https://arktype.io/), with middleware and helper.
+
+**Source:** [`examples/untitled-04.ts`](examples/untitled-04.ts)
+
+**Run it:**
+
+```bash
+$ node examples/untitled-04.ts middleware
+node
+
+$ node examples/untitled-04.ts invalid-validation
+Error: Validation failed.
+[
+  {
+    "message": "Invalid string.",
+    "path": []
+  }
+]
+```
+
+### Deno and JSR Usage
+
+This example demonstrates a Deno-based root handler that imports Tako from the JSR registry.
+
+**Source:** [`examples/jsr-untitled-01.ts`](examples/jsr-untitled-01.ts)
+
+**Run it:**
+
+```bash
+$ deno --no-npm examples/jsr-untitled-01.ts
+919108f7-52d1-4320-9bac-f847db4148a8
+```
+
+### Standard Schema with Deno
+
+This example demonstrates Standard Schema validation with Valibot in a command specific to the Deno runtime.
+
+**Source:** [`examples/jsr-untitled-02.ts`](examples/jsr-untitled-02.ts)
+
+**Run it:**
+
+```bash
+$ deno --no-npm examples/jsr-untitled-02.ts runtime
+deno
+
+$ bash -c 'exec -a node deno --no-npm examples/jsr-untitled-02.ts runtime'
+Error: Validation failed.
+[
+  {
+    "kind": "schema",
+    "type": "literal",
+    "input": "node",
+    "expected": "\"deno\"",
+    "received": "\"node\"",
+    "message": "Invalid type: Expected \"deno\" but received \"node\""
+  }
+]
+
+  Try '-h, --help' for help.
+```
+
+### Deno HTTP Import
+
+This example demonstrates a Deno-based root handler that imports Tako directly from GitHub via HTTP.
+
+**Source:** [`examples/http-untitled-01.ts`](examples/http-untitled-01.ts)
+
+**Run it:**
+
+```bash
+$ deno --no-npm examples/http-untitled-01.ts
+919108f7-52d1-4320-9bac-f847db4148a8
+
+$ deno https://raw.githubusercontent.com/takojs/tako/refs/heads/main/examples/http-untitled-01.ts
 919108f7-52d1-4320-9bac-f847db4148a8
 ```
 
@@ -165,7 +222,7 @@ Prints a message to the console.
 
 - `args.message`: The message to print.
 - `args.style`: Text style (e.g., `red`, `bold`).
-- `args.level`: The console level (e.g., `log`, `error`). Defaults to `log`.
+- `args.level`: The console level (e.g., `warn`, `error`). Defaults to `log`.
 - `args.value`: A boolean value, primarily used with the `assert` level to determine if an assertion passes or fails.
 
 ### `.fail(err)`
@@ -188,7 +245,7 @@ A **readonly** property that provides access to the full parsed command-line arg
 
 - `values`: An object containing the parsed option values (e.g., `{ name: "Tako" }`).
 - `positionals`: An array of positional arguments (e.g., `["hello"]`).
-- `tokens`: An array of tokens representing the parsed command-line arguments. This property is available only if the `tokens` option in `ParseArgsConfig` is set to `true`.
+- `tokens?`: An array of tokens representing the parsed command-line arguments. This property is available only if the `tokens` option in `ParseArgsConfig` is set to `true`.
 
 ### `.args`
 
@@ -196,17 +253,39 @@ A mutable property for passing data between middleware handlers. Unlike the read
 
 ### `.config`
 
-A **readonly** property that provides access to the currently active command's configuration. Internally managed as a private property, this `ParseArgsConfig` object contains the `options` definitions and other parsing settings like `allowNegative` and `tokens`. It can be useful for handlers that need to dynamically inspect the command's configuration.
+A **readonly** property that provides access to the currently active command's configuration. Internally managed as a private property, this `ParseArgsConfig` object can be useful for handlers that need to dynamically inspect the command's configuration.
+
+- `args?`: An array of arguments to parse.
+- `options?`: Definitions for command-line options.
+  - `type`: The type of the option's value.
+  - `short?`: A single-character alias for the option.
+  - `default?`: The default value for the option.
+  - `multiple?`: If `true`, the option can be specified multiple times, resulting in an array of values.
+- `strict?`: If `false`, allows unknown arguments.
+- `allowPositionals?`: If `false`, throws an error for positional arguments.
+- `allowNegative?`: If `true`, allows options like `--no-foo`.
+- `tokens?`: If `true`, populates a `tokens` array in the parsed results.
 
 ### `.metadata`
 
-A property that holds the currently active command's `ArgsMetadata` object. This metadata is used for generating help text and defining command-level information.
+A property that holds the currently active command's `ArgsMetadata` object.
+
+- `cliExit?`: If `false`, errors are thrown instead of exiting the process.
+- `cliName?`: The name of the CLI used in help messages.
+- `version?`: The CLI's version string.
+- `help?`: The help description for the command.
+- `placeholder?`: A placeholder for positional arguments in the usage string.
+- `required?`: If `true`, indicates that at least one positional argument is required.
+- `options?`: Metadata for individual options.
+  - `help?`: A help message for the individual option.
+  - `placeholder?`: A placeholder for the option's value in help messages.
+  - `required?`: If `true`, this specific option must be provided.
 
 ### `.genDocs()`
 
 Returns the generated help messages for all commands as a single string.
 
-### `.getHelp()`
+### `.getHelp(target?)`
 
 Returns the generated help message as a string.
 
